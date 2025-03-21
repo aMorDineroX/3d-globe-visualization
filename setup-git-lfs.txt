@@ -5,7 +5,21 @@ git lfs install
 git lfs track "*.jpg" "*.png" "*.jpeg" "*.crdownload"
 git add .gitattributes
 
-# Ajouter, commiter et pousser
+# Supprimer les fichiers volumineux du cache de Git
+git rm --cached "assets/textures/world.topo.bathy.200412.3x21600x21600.C1.png.crdownload"
+
+# Vérifier que les fichiers sont bien suivis par LFS
+git lfs ls-files
+
+# Si un commit a déjà été fait avec le fichier volumineux, corriger l'historique
+# git filter-branch --force --index-filter "git rm --cached --ignore-unmatch assets/textures/world.topo.bathy.200412.3x21600x21600.C1.png.crdownload" --prune-empty --tag-name-filter cat -- --all
+
+# Ajouter à nouveau les fichiers pour qu'ils soient gérés par LFS
 git add .
+
+# Commiter et pousser
 git commit -m "Configurer Git LFS pour les fichiers volumineux"
 git push origin main
+
+# Si le push échoue encore, essayer avec --force (utiliser avec précaution)
+# git push --force origin main
