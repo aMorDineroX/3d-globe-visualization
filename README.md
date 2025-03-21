@@ -81,5 +81,3 @@ Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
 - Implémenter un système de recherche
 - Optimiser les performances pour les appareils mobiles
 - Ajouter des animations de transition plus sophistiquées
-
-# 3d-globe-visualization
