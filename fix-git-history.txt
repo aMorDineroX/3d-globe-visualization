@@ -1,0 +1,22 @@
+# Script pour nettoyer complètement l'historique Git des fichiers volumineux
+
+# 1. S'assurer que Git LFS est installé
+git lfs install
+
+# 2. Supprimer complètement le fichier volumineux de l'historique Git
+git filter-branch --force --index-filter "git rm --cached --ignore-unmatch assets/textures/world.topo.bathy.200412.3x21600x21600.C1.png.crdownload" --prune-empty --tag-name-filter cat -- --all
+
+# 3. Nettoyer les références et le garbage collector
+git for-each-ref --format="delete %(refname)" refs/original | git update-ref --stdin
+git reflog expire --expire=now --all
+git gc --prune=now
+
+# 4. Vérifier que le fichier volumineux a bien été supprimé
+git verify-pack -v .git/objects/pack/*.idx | sort -k 3 -n | tail -10
+
+# 5. Forcer la mise à jour du dépôt distant
+# ATTENTION: Ceci réécrit l'historique du dépôt distant. Assurez-vous que c'est ce que vous voulez faire.
+git push origin --force --all
+
+# Note: Après avoir exécuté ce script, tous les collaborateurs devront cloner à nouveau le dépôt
+# ou exécuter: git pull --rebase

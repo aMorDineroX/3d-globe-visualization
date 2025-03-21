@@ -1,0 +1,71 @@
+# Script pour résoudre les problèmes de chargement des textures
+
+# 1. Créer les dossiers nécessaires s'ils n'existent pas
+mkdir -p assets/textures
+
+# 2. Télécharger les textures manquantes localement
+echo "Téléchargement des textures manquantes..."
+
+# Télécharger la texture NASA Blue Marble
+curl -o assets/textures/bluemarble-2048.jpg https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.jpg
+
+# Télécharger les autres textures manquantes (à adapter selon vos besoins)
+curl -o assets/textures/2_no_clouds_4k.jpg https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x21600x21600.jpg
+curl -o assets/textures/earth_clouds.png https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57747/cloud_combined_2048.jpg
+curl -o assets/textures/elev_bump_4k.jpg https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73934/gebco_08_rev_elev_21600x10800.png
+curl -o assets/textures/earth_nightlights_8k.jpg https://eoimages.gsfc.nasa.gov/images/imagerecords/79000/79765/dnb_land_ocean_ice.2012.54000x27000.jpg
+
+# 3. Créer un fichier directory.json pour référencer les textures
+echo '{
+  "textures": [
+    {"name": "bluemarble", "file": "bluemarble-2048.jpg"},
+    {"name": "earth_daymap", "file": "2_no_clouds_4k.jpg"},
+    {"name": "earth_clouds", "file": "earth_clouds.png"},
+    {"name": "earth_elevation", "file": "elev_bump_4k.jpg"},
+    {"name": "earth_nightlights", "file": "earth_nightlights_8k.jpg"}
+  ]
+}' > assets/textures/directory.json
+
+# 4. Ajouter les fichiers à Git LFS
+git lfs track "assets/textures/*.jpg" "assets/textures/*.png" "assets/textures/*.json"
+git add .gitattributes
+
+# 5. Ajouter et commiter les fichiers
+git add assets/textures
+git commit -m "Ajout des textures locales pour le globe 3D"
+
+# 6. Solution pour les problèmes CORS pendant le développement
+# Créer un fichier pour configurer un proxy CORS local
+echo '// Configuration pour contourner les problèmes CORS en développement
+// Créer un fichier corsConfig.js dans votre projet
+
+export const setupCorsProxy = (url) => {
+  // Vérifier si l\'URL est déjà locale
+  if (url.startsWith(\'./\') || url.startsWith(\'/\')) {
+    return url;
+  }
+  
+  // Si en développement local, utiliser le chemin local
+  if (window.location.hostname === \'localhost\' || window.location.hostname === \'127.0.0.1\') {
+    // Extraire le nom de fichier de l\'URL
+    const filename = url.split(\'/\').pop();
+    return `/assets/textures/${filename}`;
+  }
+  
+  return url;
+};' > corsConfig.js
+
+echo "
+// Instructions pour utiliser le corsConfig.js dans votre code:
+// 1. Importez la fonction dans vos fichiers JavaScript:
+//    import { setupCorsProxy } from './corsConfig.js';
+//
+// 2. Utilisez-la pour charger les textures:
+//    const textureLoader = new THREE.TextureLoader();
+//    const texture = textureLoader.load(setupCorsProxy('https://svs.gsfc.nasa.gov/.../bluemarble-2048.jpg'));
+//
+// Ou si vous utilisez une fonction de chargement existante, modifiez-la pour utiliser setupCorsProxy
+" > utilisation-cors-config.txt
+
+echo "Les textures ont été téléchargées et configurées avec succès."
+echo "N'oubliez pas d'adapter les chemins dans vos fichiers JavaScript pour utiliser les textures locales."

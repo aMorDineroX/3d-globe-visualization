@@ -1,0 +1,42 @@
+# Configuration pour GitHub Pages avec Git LFS
+
+# 1. S'assurer que la branche main est propre (sans fichiers volumineux dans l'historique)
+# Utiliser d'abord fix-git-history.txt si nécessaire
+
+# 2. Créer un fichier .nojekyll à la racine pour désactiver le traitement Jekyll
+touch .nojekyll
+git add .nojekyll
+
+# 3. Créer un fichier index.html minimal si non existant
+# echo "<html><head><title>Globe 3D Visualization</title></head><body><h1>Globe 3D Visualization</h1></body></html>" > index.html
+# git add index.html
+
+# 4. Configurer les ressources statiques pour GitHub Pages
+# Créer un dossier docs si vous souhaitez utiliser ce dossier comme source
+# mkdir -p docs
+# cp index.html docs/
+# git add docs
+
+# 5. Créer un fichier README.md pour la documentation du projet
+# echo "# 3D Globe Visualization\n\nCe projet utilise Three.js pour créer une visualisation 3D d'un globe terrestre." > README.md
+# git add README.md
+
+# 6. Ajouter les fichiers de configuration Git LFS spécifiques pour GitHub Pages
+git lfs track "docs/**/*.jpg" "docs/**/*.png" "docs/**/*.jpeg"
+git add .gitattributes
+
+# 7. Commiter les changements
+git commit -m "Configuration pour GitHub Pages"
+
+# 8. Pousser vers GitHub
+git push origin main
+
+# 9. Activer GitHub Pages dans les paramètres du dépôt:
+# - Aller dans Settings > Pages
+# - Source: Sélectionner la branche main
+# - Dossier: / (root) ou /docs selon votre configuration
+# - Sauvegarder
+
+# Note: Les fichiers suivis par Git LFS seront correctement gérés dans GitHub Pages,
+# mais assurez-vous que les fichiers de plus de 100 Mo sont bien suivis par LFS
+# avant de les commiter.

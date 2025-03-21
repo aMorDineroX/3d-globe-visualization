@@ -1,0 +1,9 @@
+{
+    "textures": [
+      {"name": "bluemarble", "file": "bluemarble-2048.jpg"},
+      {"name": "earth_daymap", "file": "2_no_clouds_4k.jpg"},
+      {"name": "earth_clouds", "file": "earth_clouds.png"},
+      {"name": "earth_elevation", "file": "elev_bump_4k.jpg"},
+      {"name": "earth_nightlights", "file": "earth_nightlights_8k.jpg"}
+    ]
+  }

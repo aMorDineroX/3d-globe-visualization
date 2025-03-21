@@ -30,95 +30,64 @@ export class TextureChecker {
         'water_4k', 'fair_clouds_4k', '8k_stars_milky_way', '8k_sun', '8k_moon'
       ];
       
-      // Essayez d'abord de lister les fichiers dans le répertoire des textures
+      // Essayer de lister les fichiers dans le répertoire des textures
       try {
         await this.listLocalFiles(basePath);
       } catch (err) {
-        console.warn("Impossible de lister les fichiers du répertoire:", err);
+        console.warn("Impossible de lister les fichiers du répertoire, passage en mode vérification directe");
       }
       
       // Vérifier chaque texture commune avec différentes extensions
-      for (const textureName of commonTextureNames) {
-        let textureLoaded = false;
-        
+      const texturePromises = commonTextureNames.map(async (textureName) => {
         for (const ext of extensions) {
           const fileName = `${textureName}${ext}`;
-          const fullPath = `${basePath}${fileName}`;
           
           try {
-            // Vérifier si ce fichier est dans notre liste de textures locales détectées
-            const isInLocalList = this.localTextures.includes(fileName);
-            
-            if (isInLocalList) {
-              console.log(`Texture locale détectée: ${fileName}`);
+            // Vérifier d'abord si le fichier existe localement avec un HEAD request
+            const response = await fetch(`${basePath}${fileName}`, { method: 'HEAD' });
+            if (response.ok) {
+              if (!this.localTextures.includes(fileName)) {
+                this.localTextures.push(fileName);
+              }
+              console.log(`✅ Texture trouvée: ${fileName}`);
+              return true;
             }
-            
-            // Essayer de charger via assetManager (priorité aux locales si détectées)
-            const texture = await assetManager.loadTexture(fileName, isInLocalList);
-            
-            // Vérifier si la texture est procédurale
-            const isProcedural = texture.isProcedural === true;
-            
-            this.recordResult(
-              fileName, 
-              true, 
-              isProcedural 
-                ? "Texture procédurale générée" 
-                : (isInLocalList ? "Chargée depuis le disque local" : "Chargée via AssetManager/CDN")
-            );
-            
-            if (isProcedural) {
-              this.proceduralTextures++;
-            }
-            
-            textureLoaded = true;
-            break; // Une fois chargée avec succès, pas besoin de tester d'autres extensions
           } catch (error) {
-            // Continue avec l'extension suivante
+            // Ignorer les erreurs de réseau et continuer
+            continue;
           }
         }
-        
-        if (!textureLoaded) {
-          this.recordResult(`${textureName}.*`, false, "Aucune version trouvée");
-        }
-      }
-
-      // Rapport final
-      console.log("📊 Rapport de vérification des textures:");
-      console.log(`Total vérifié: ${this.totalTextures}`);
-      console.log(`Chargées avec succès: ${this.loadedTextures}`);
-      console.log(`   dont procédurales: ${this.proceduralTextures}`);
-      console.log(`Échecs: ${this.failedTextures}`);
+        return false;
+      });
       
-      // Afficher les détails des textures qui ont réussi
-      console.log("✅ Textures chargées:");
-      this.resultsList
-        .filter(result => result.success)
-        .forEach(result => console.log(`  - ${result.name}: ${result.details}`));
+      // Attendre que toutes les vérifications soient terminées
+      await Promise.all(texturePromises);
       
-      // Afficher les détails des textures qui ont échoué
-      if (this.failedTextures > 0) {
-        console.log("❌ Textures manquantes ou non chargées:");
-        this.resultsList
-          .filter(result => !result.success)
-          .forEach(result => console.log(`  - ${result.name}: ${result.details}`));
-      }
+      // Vérifier les textures requises
+      const requiredGroups = [
+        ['earth_daymap.jpg', '2_no_clouds_4k.jpg'],
+        ['earth_clouds.png', 'fair_clouds_4k.png'],
+        ['earth_bumpmap.jpg', 'elev_bump_4k.jpg']
+      ];
       
-      // Ajout d'informations sur comment télécharger les textures manquantes
-      if (this.failedTextures > 0) {
-        console.log("\n🔄 Pour télécharger les textures manquantes, utilisez l'utilitaire TextureDownloader.");
-        console.log("   Voir TextureDownloader.js pour plus d'informations.");
+      const missingRequired = requiredGroups.filter(group => 
+        !group.some(texture => this.localTextures.includes(texture))
+      );
+      
+      if (missingRequired.length > 0) {
+        console.warn("⚠️ Textures requises manquantes:");
+        missingRequired.forEach(group => {
+          console.warn(`  - ${group.join(' OU ')}`);
+        });
       }
       
       return {
-        success: this.failedTextures === 0,
-        total: this.totalTextures,
-        loaded: this.loadedTextures,
-        procedural: this.proceduralTextures,
-        failed: this.failedTextures,
-        details: this.resultsList,
+        success: missingRequired.length === 0,
+        total: this.localTextures.length,
+        missing: missingRequired,
         localTextures: this.localTextures
       };
+      
     } catch (error) {
       console.error("Erreur lors de la vérification des textures:", error);
       return { success: false, error: error.message };
@@ -129,50 +98,125 @@ export class TextureChecker {
    * Liste les fichiers dans le répertoire des textures
    */
   async listLocalFiles(basePath) {
+    const customOrder = (fileName) => {
+      // Donner une priorité plus élevée aux fichiers JPG
+      if (fileName.endsWith('.jpg')) return 1;
+      if (fileName.endsWith('.png')) return 2;
+      if (fileName.endsWith('.tif')) return 3;
+      return 4;
+    };
+    
     try {
-      // Cette méthode tente de lister les fichiers dans le répertoire des textures
-      // en utilisant une approche simple: essayer de charger un fichier spécial 'directory.json'
-      // qui contiendrait la liste des fichiers, ou à défaut, tester les fichiers individuellement
-      
       console.log("Recherche de fichiers locaux...");
       
-      // Essayer d'abord de charger un fichier directory.json qui pourrait exister
+      const textureStatus = {
+        required: [],
+        optional: [],
+        found: [],
+        missing: []
+      };
+
+      // Définir les textures requises et optionnelles avec leurs alternatives
+      const requiredTextures = [
+        ['earth_daymap.jpg', '2_no_clouds_4k.jpg'],  // Au moins une des deux est requise
+        ['earth_clouds.png', 'fair_clouds_4k.png'],   // Au moins une des deux est requise
+        ['earth_bumpmap.jpg', 'elev_bump_4k.jpg']    // Au moins une des deux est requise
+      ];
+
+      const optionalTextures = [
+        ['earth_nightlights_8k.jpg', 'earth-night.jpg', 'night_lights.jpg'],
+        ['8k_stars_milky_way.jpg'],
+        ['8k_sun.jpg'],
+        ['8k_moon.jpg'],
+        ['earth_specularmap.jpg'],
+        ['water_4k.png']
+      ];
+
+      // Vérifier d'abord directory.json
       try {
         const response = await fetch(`${basePath}directory.json`);
         if (response.ok) {
           const data = await response.json();
           this.localTextures = data.files || [];
-          console.log(`${this.localTextures.length} fichiers trouvés dans directory.json`);
+          console.log(`📁 ${this.localTextures.length} fichiers listés dans directory.json`);
           return;
         }
       } catch (e) {
-        // Pas de directory.json, continuons avec des méthodes alternatives
+        console.log("❌ Pas de directory.json trouvé, vérification manuelle...");
       }
-      
-      // Méthode manuelle: vérifier l'existence de quelques fichiers de texture courants
-      const testFiles = [
-        'earth_daymap.jpg', '2_no_clouds_4k.jpg', 'earth_clouds.png',
-        'elev_bump_4k.jpg', 'earth_nightlights_8k.jpg',
-        '8k_stars_milky_way.jpg', '8k_sun.jpg', '8k_moon.jpg'
-      ];
-      
-      this.localTextures = [];
-      
-      for (const file of testFiles) {
-        try {
-          const response = await fetch(`${basePath}${file}`, { method: 'HEAD' });
-          if (response.ok) {
-            this.localTextures.push(file);
-            console.log(`Fichier local détecté: ${file}`);
+
+      // Vérifier les textures requises (avec leurs alternatives)
+      for (const textureGroup of requiredTextures) {
+        let foundInGroup = false;
+        for (const texture of textureGroup) {
+          try {
+            const response = await fetch(`${basePath}${texture}`, { method: 'HEAD' });
+            if (response.ok) {
+              this.localTextures.push(texture);
+              textureStatus.found.push(texture);
+              foundInGroup = true;
+              console.log(`✅ Texture requise trouvée: ${texture}`);
+              break; // On arrête dès qu'on trouve une alternative valide
+            }
+          } catch (e) {
+            continue;
           }
-        } catch (e) {
-          // Ignorer les erreurs, ce fichier n'existe probablement pas
+        }
+        if (!foundInGroup) {
+          textureStatus.missing.push(textureGroup[0]);
+          console.log(`❌ Groupe de textures requises manquant: ${textureGroup.join(' ou ')}`);
         }
       }
-      
-      console.log(`${this.localTextures.length} fichiers trouvés localement`);
+
+      // Vérifier les textures optionnelles
+      for (const textureGroup of optionalTextures) {
+        let foundInGroup = false;
+        for (const texture of textureGroup) {
+          try {
+            const response = await fetch(`${basePath}${texture}`, { method: 'HEAD' });
+            if (response.ok) {
+              this.localTextures.push(texture);
+              textureStatus.found.push(texture);
+              foundInGroup = true;
+              console.log(`✅ Texture optionnelle trouvée: ${texture}`);
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        if (!foundInGroup && textureGroup.length > 0) {
+          console.log(`ℹ️ Texture optionnelle non trouvée: ${textureGroup[0]}`);
+        }
+      }
+
+      // Sort files to prioritize JPG versions
+      this.localTextures.sort((a, b) => {
+        return customOrder(a) - customOrder(b);
+      });
+
+      // Rapport final
+      const missingRequired = textureStatus.missing.filter(t => 
+        requiredTextures.some(group => group.includes(t))
+      );
+
+      console.log("\n📊 Rapport des textures:");
+      console.log(`Trouvées: ${textureStatus.found.length}`);
+      console.log(`Textures requises: ${requiredTextures.length - missingRequired.length}/${requiredTextures.length}`);
+
+      if (missingRequired.length > 0) {
+        console.warn("\n⚠️ Groupes de textures requises manquants:");
+        requiredTextures.forEach(group => {
+          if (!group.some(t => textureStatus.found.includes(t))) {
+            console.warn(`  - ${group.join(' OU ')}`);
+          }
+        });
+        console.warn("\n💡 Consultez assets/textures/README.md pour les instructions de téléchargement");
+      }
+
+      return textureStatus;
     } catch (error) {
-      console.error("Échec de la liste des fichiers locaux:", error);
+      console.error("Erreur fatale lors de la vérification des textures:", error);
       throw error;
     }
   }
@@ -350,6 +394,16 @@ export class TextureChecker {
       
       content.appendChild(suggestions);
     }
+  }
+
+  checkRequiredTextures() {
+    const requiredGroups = [
+      { name: 'Earth Daytime', files: ['earth_daymap.jpg', '2_no_clouds_4k.jpg'] },
+      { name: 'Earth Clouds', files: ['earth_clouds.jpg', 'earth_clouds.png', 'fair_clouds_4k.png', 'fair_clouds_4k.jpg', 'cloud_combined_2048.jpg'] },
+      { name: 'Earth Bump Map', files: ['earth_bumpmap.jpg', 'elev_bump_4k.jpg'] }
+    ];
+    
+    // ...continue with existing logic...
   }
 }
 

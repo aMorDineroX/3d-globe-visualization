@@ -10,8 +10,10 @@ export class AssetManager {
     this.baseUrls = [
       './assets/textures/',
       '/assets/textures/',
+      '../assets/textures/',
+      'assets/textures/',
       '/',
-      '../assets/textures/'
+      './'
     ];
     
     // URLs de secours en ligne pour les textures courantes
@@ -70,7 +72,23 @@ export class AssetManager {
       ],
       '8k_moon.jpg': [
         'https://raw.githubusercontent.com/chrisrzhou/react-globe/main/textures/moon.jpg'
+      ],
+      
+      // Meilleure prise en charge pour earth_specularmap
+      'earth_specularmap.tif': [
+        'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/earth_ocean_3600x1800.jpg', // Alternative JPG
+        'https://raw.githubusercontent.com/turban/webgl-earth/master/images/water_4k.png'
+      ],
+      'earth_specularmap.jpg': [
+        'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/earth_ocean_3600x1800.jpg',
+        'https://raw.githubusercontent.com/turban/webgl-earth/master/images/water_4k.png'
       ]
+    };
+    
+    // Ajouter une table de correspondance pour les formats problématiques
+    this.formatFallbacks = {
+      'tif': ['jpg', 'png'],
+      'tiff': ['jpg', 'png']
     };
     
     // Textures météo
@@ -83,17 +101,41 @@ export class AssetManager {
     // Nombre maximal de tentatives de chargement par texture
     this.maxLoadAttempts = 3;
     
-    // Préférer les textures procédurales pour éviter les problèmes CORS
-    this.preferProceduralFallbacks = true;
+    // Préférer les textures locales par défaut
+    this.preferProceduralFallbacks = false;
   }
 
-  async loadTexture(name, preferLocal = false) {
+  async loadTexture(name, preferLocal = true) {
     // Check if texture is already cached
     if (this.cache.has(name)) {
       return this.cache.get(name);
     }
 
     console.log(`Tentative de chargement de la texture: ${name} (priorité ${preferLocal ? 'locale' : 'CDN'})`);
+    
+    // Pour la localisation des erreurs
+    let loadErrors = [];
+    
+    // Toujours essayer les chemins locaux d'abord
+    for (const baseUrl of this.baseUrls) {
+      try {
+        const url = `${baseUrl}${name}`;
+        console.log(`Essai de chargement direct: ${url}`);
+        const texture = await this._loadTexturePromise(url).catch(err => {
+          loadErrors.push(`${url}: ${err.message}`);
+          throw err; // Re-throw to continue with next path
+        });
+        console.log(`✅ Texture chargée avec succès depuis: ${url}`);
+        this.cache.set(name, texture);
+        return texture;
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+    
+    // Si nous arrivons ici, les chemins locaux n'ont pas fonctionné
+    console.warn(`❌ Echec de chargement depuis les chemins locaux pour: ${name}`);
+    console.debug("Erreurs:", loadErrors);
     
     // Déterminer si on devrait utiliser directement une texture procédurale
     if (this.preferProceduralFallbacks) {
@@ -150,6 +192,23 @@ export class AssetManager {
       this.cache.set(name, texture);
       return texture;
     } catch (error) {
+      // Si c'est un format problématique comme TIF, essayer avec des alternatives
+      const extension = name.split('.').pop().toLowerCase();
+      if (this.formatFallbacks[extension]) {
+        const baseName = name.substring(0, name.lastIndexOf('.'));
+        for (const altExt of this.formatFallbacks[extension]) {
+          const altName = `${baseName}.${altExt}`;
+          console.log(`Tentative avec format alternatif: ${altName}`);
+          try {
+            const texture = await this._loadTextureFromAnySource(altName, preferLocal);
+            this.cache.set(name, texture); // Cacher sous le nom original
+            return texture;
+          } catch (altError) {
+            console.warn(`Format alternatif ${altName} également échoué:`, altError);
+          }
+        }
+      }
+      
       console.warn(`Échec du chargement de la texture ${name}. Création d'une texture procédurale.`, error);
       
       // If all attempts fail, create a procedural texture as last resort
@@ -231,53 +290,38 @@ export class AssetManager {
   // Enhanced error handling for texture loading
   _loadTexturePromise(url) {
     return new Promise((resolve, reject) => {
-      console.log(`Démarrage du chargement de texture depuis: ${url}`);
-      
-      // Vérifier si un proxy CORS est nécessaire
-      const needsProxy = corsProxyHelper.needsProxy(url);
-      let finalUrl = url;
-      
-      if (needsProxy) {
-        finalUrl = corsProxyHelper.applyProxy(url);
-        console.log(`Utilisation de proxy CORS pour: ${url}`);
-      }
-      
-      // Add a timeout to detect hanging requests
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Délai d'attente dépassé pour le chargement de: ${url}`));
-      }, 10000); // 10 seconds timeout
-      
-      this.textureLoader.load(
-        finalUrl,
-        texture => {
-          clearTimeout(timeoutId);
-          console.log(`Chargement réussi de: ${url}`);
-          texture.url = url; // Stocker l'URL d'origine pour référence
-          resolve(texture);
-        },
-        // Progress callback
-        progress => {
-          if (progress.lengthComputable) {
-            const percentComplete = (progress.loaded / progress.total) * 100;
-            console.log(`Chargement de texture: ${percentComplete.toFixed(1)}% - ${url}`);
-          }
-        },
-        error => {
-          clearTimeout(timeoutId);
-          console.warn(`Erreur de chargement pour: ${finalUrl}`, error);
-          
-          // Si l'erreur est survenue avec un proxy, essayer un autre proxy
-          if (needsProxy) {
-            corsProxyHelper.rotateProxy();
-            console.log(`Tentative avec un autre proxy pour: ${url}`);
-            this._loadTexturePromise(url)
-              .then(resolve)
-              .catch(reject);
-          } else {
-            reject(error);
-          }
+      try {
+        const loader = new THREE.TextureLoader();
+        
+        // Ajouter des logs détaillés pour le diagnostic
+        console.log(`Tentative de chargement de la texture: ${url}`);
+        
+        // Vérifier si c'est un TIF qui pourrait causer des problèmes
+        if (url.toLowerCase().endsWith('.tif')) {
+          console.warn(`Attention: La tentative de charger un fichier TIF (${url}) peut échouer dans certains navigateurs.`);
         }
-      );
+        
+        loader.load(
+          url,
+          (texture) => {
+            console.log(`✅ Texture chargée avec succès: ${url}`);
+            texture.url = url; // Stocker l'URL pour référence
+            resolve(texture);
+          },
+          (xhr) => {
+            if (xhr.loaded / xhr.total < 1) {
+              console.log(`Progression: ${url} - ${Math.round((xhr.loaded / xhr.total) * 100)}%`);
+            }
+          },
+          (error) => {
+            console.warn(`❌ Erreur lors du chargement de la texture ${url}:`, error);
+            reject(new Error(`Échec du chargement de la texture: ${error.message || 'Erreur inconnue'}`));
+          }
+        );
+      } catch (err) {
+        console.error(`🔥 Exception lors de l'initialisation du chargement de texture ${url}:`, err);
+        reject(err);
+      }
     });
   }
   
@@ -652,6 +696,88 @@ export class AssetManager {
         ctx.fill();
       }
       
+    } else if (name.includes('specular')) {
+      // Texture specular map pour l'eau et les réflexions (bleu clair pour l'eau)
+      ctx.fillStyle = '#000000';  // Fond noir = pas de réflexion
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Dessiner les océans comme des surfaces réfléchissantes
+      const oceanMask = this._generateOceanMask(canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const index = i / 4;
+        const x = index % canvas.width;
+        const y = Math.floor(index / canvas.width);
+        
+        // Si c'est un océan, donner une valeur spéculaire
+        if (oceanMask[y] && oceanMask[y][x]) {
+          data[i] = data[i + 1] = data[i + 2] = 80;  // Gris pour les océans (réfléchissants)
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      
+    } else if (name.includes('night') || name.includes('nightlights')) {
+      // Noir de fond
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Dessiner des continents avec des villes et leurs lumières
+      const cities = [
+        // Amérique du Nord
+        { x: 170, y: 140, size: 15, brightness: 0.9 }, // New York
+        { x: 150, y: 160, size: 13, brightness: 0.8 }, // Chicago
+        { x: 120, y: 150, size: 14, brightness: 0.85 }, // Los Angeles
+        { x: 140, y: 120, size: 12, brightness: 0.7 }, // Toronto
+        
+        // Europe
+        { x: 280, y: 130, size: 14, brightness: 0.85 }, // Londres
+        { x: 290, y: 140, size: 13, brightness: 0.8 }, // Paris
+        { x: 300, y: 150, size: 12, brightness: 0.75 }, // Madrid
+        { x: 310, y: 135, size: 13, brightness: 0.8 }, // Berlin
+        
+        // Asie
+        { x: 350, y: 180, size: 16, brightness: 0.9 }, // Dubaï
+        { x: 400, y: 160, size: 15, brightness: 0.9 }, // New Delhi
+        { x: 430, y: 170, size: 16, brightness: 0.95 }, // Beijing
+        { x: 450, y: 180, size: 14, brightness: 0.85 }, // Tokyo
+        
+        // Australie
+        { x: 420, y: 300, size: 13, brightness: 0.8 }, // Sydney
+        
+        // Amérique du Sud
+        { x: 220, y: 270, size: 14, brightness: 0.85 }, // São Paulo
+        { x: 200, y: 250, size: 12, brightness: 0.75 }, // Lima
+      ];
+      
+      // Ajouter des points aléatoires pour les villes plus petites
+      for (let i = 0; i < 100; i++) {
+        cities.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 5 + 3,
+          brightness: Math.random() * 0.5 + 0.2
+        });
+      }
+      
+      // Dessiner les lumières des villes
+      cities.forEach(city => {
+        const gradient = ctx.createRadialGradient(
+          city.x, city.y, 0, 
+          city.x, city.y, city.size
+        );
+        
+        gradient.addColorStop(0, `rgba(255, 240, 200, ${city.brightness})`);
+        gradient.addColorStop(0.5, `rgba(255, 240, 200, ${city.brightness * 0.5})`);
+        gradient.addColorStop(1, 'rgba(255, 240, 200, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(city.x, city.y, city.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
     } else {
       // Texture générique (damier)
       const tileSize = 64;
@@ -676,6 +802,49 @@ export class AssetManager {
     texture.name = `procedural_${name}`;
     
     return texture;
+  }
+  
+  // Nouvelle méthode pour générer un modèle simple des océans
+  _generateOceanMask(width, height) {
+    const mask = [];
+    
+    // Initialiser le masque
+    for (let y = 0; y < height; y++) {
+      mask[y] = [];
+      for (let x = 0; x < width; x++) {
+        mask[y][x] = true; // Par défaut tout est océan
+      }
+    }
+    
+    // Définir les continents (formes approximatives)
+    const continents = [
+      {x: 256, y: 150, width: 180, height: 100}, // Amérique du Nord
+      {x: 280, y: 260, width: 100, height: 120}, // Amérique du Sud
+      {x: 450, y: 170, width: 120, height: 100}, // Europe/Afrique
+      {x: 50, y: 190, width: 200, height: 100}, // Asie
+      {x: 100, y: 320, width: 80, height: 60}  // Australie
+    ];
+    
+    // Fonction pour vérifier si un point est dans une ellipse
+    const isInEllipse = (x, y, ellipse) => {
+      const dx = (x - ellipse.x) / (ellipse.width/2);
+      const dy = (y - ellipse.y) / (ellipse.height/2);
+      return (dx*dx + dy*dy) <= 1;
+    };
+    
+    // Marquer les continents comme non-océans
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        for (const continent of continents) {
+          if (isInEllipse(x, y, continent)) {
+            mask[y][x] = false; // Ce n'est pas un océan
+            break;
+          }
+        }
+      }
+    }
+    
+    return mask;
   }
   
   /**
