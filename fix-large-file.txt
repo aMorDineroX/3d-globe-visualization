@@ -1,0 +1,10 @@
+# Supprimer complètement le fichier de l'historique Git
+git filter-branch --force --index-filter "git rm --cached --ignore-unmatch assets/textures/world.topo.bathy.200412.3x21600x21600.C1.png.crdownload" --prune-empty --tag-name-filter cat -- --all
+
+# Nettoyer les références et libérer l'espace
+git for-each-ref --format="delete %(refname)" refs/original | git update-ref --stdin
+git reflog expire --expire=now --all
+git gc --prune=now
+
+# Pousser les changements avec force
+git push -f origin maain

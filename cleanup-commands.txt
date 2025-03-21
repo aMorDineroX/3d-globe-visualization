@@ -1,0 +1,10 @@
+# Retirer les fichiers volumineux du suivi Git sans les supprimer de votre système
+git rm --cached -r assets/textures/*.jpg
+git rm --cached -r assets/textures/*.png
+git rm --cached -r assets/textures/*.jpeg
+
+# Créer un nouveau commit sans les fichiers volumineux
+git commit -m "Retrait des fichiers de textures volumineux du suivi Git"
+
+# Pousser à nouveau
+git push -u origin main

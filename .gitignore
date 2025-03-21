@@ -1,0 +1,32 @@
+# Dossiers node
+node_modules/
+dist/
+build/
+
+# Fichiers de textures volumineux
+assets/textures/*.jpg
+assets/textures/*.png
+assets/textures/*.jpeg
+assets/textures/*.gif
+assets/textures/*.webp
+assets/textures/*.crdownload
+assets/textures/*.download
+assets/textures/*.tmp
+
+# Ne pas ignorer le README des textures
+!assets/textures/README.md
+
+# Fichiers de développement
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.log
+
+# Fichiers volumineux spécifiques (plus de 50 MB)
+*world.topo.bathy*
+*21600x21600*
+*10800x*
+*x10800*

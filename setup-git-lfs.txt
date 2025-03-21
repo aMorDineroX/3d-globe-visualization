@@ -1,0 +1,11 @@
+# Installer Git LFS
+git lfs install
+
+# Configurer les types de fichiers à gérer par LFS
+git lfs track "*.jpg" "*.png" "*.jpeg" "*.crdownload"
+git add .gitattributes
+
+# Ajouter, commiter et pousser
+git add .
+git commit -m "Configurer Git LFS pour les fichiers volumineux"
+git push origin main

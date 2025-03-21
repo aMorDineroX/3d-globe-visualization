@@ -1,29 +1,56 @@
-# Textures pour le Globe Terrestre
+# Textures pour le Globe 3D
 
-Pour que le globe fonctionne correctement, vous devez ajouter les textures suivantes dans ce dossier :
+Les fichiers de textures ne sont pas inclus dans ce dépôt en raison de leur taille.
 
-## Textures requises
+## Textures nécessaires
 
-1. `earth_daymap.jpg` - Texture de la Terre (vue de jour)
-2. `earth_bumpmap.jpg` - Carte de relief pour donner du volume
-3. `earth_specularmap.tif` - Carte spéculaire pour les reflets (format TIF)
-4. `earth_clouds.png` - Texture de nuages (avec transparence)
+Pour que l'application fonctionne correctement, téléchargez ces textures:
 
-## Où obtenir ces textures
+- 2_no_clouds_4k.jpg
+- elev_bump_4k.jpg
+- water_4k.png
+- fair_clouds_4k.png
+- earth_nightlights_8k.jpg
+- 8k_stars_milky_way.jpg
+- 8k_sun.jpg
+- 8k_moon.jpg
 
-Vous pouvez télécharger des textures de haute qualité depuis les sources suivantes :
+## Textures additionnelles disponibles
 
-- [NASA Visible Earth](https://visibleearth.nasa.gov/)
-- [Solar System Scope](https://www.solarsystemscope.com/textures/)
-- [Planetary Pixel Emporium](http://planetpixelemporium.com/earth.html)
+Ces textures supplémentaires peuvent être utilisées pour améliorer le rendu ou proposer des alternatives:
 
-## Instructions de téléchargement
+- earth_daymap.jpg (texture principale alternative pour la Terre)
+- Explorer Base Map.png (carte topographique détaillée)
+- ipcc_bluemarble_east_lrg.jpg (hémisphère est en haute résolution)
+- ipcc_bluemarble_west_lrg.jpg (hémisphère ouest en haute résolution)
+- Land topography is a digital image of the three-dimensional structure of the Earth's surface 21600x10800.png (topographie terrestre)
+- North Africa and Europe from Suomi NPP.jpg (vue détaillée de l'Afrique et de l'Europe)
+- The View from the Top.jpg (vue polaire)
+- world.topo.bathy.200412.3x21600x21600.C1.png (topographie et bathymétrie complètes)
 
-1. Téléchargez les fichiers de texture depuis l'une des sources ci-dessus
-2. Renommez-les selon les noms indiqués ci-dessus
-3. Placez-les dans ce dossier (`assets/textures/`)
+## Sources possibles pour les textures
 
-Note : Assurez-vous que les textures ont une résolution suffisante (idéalement 2048x1024 ou 4096x2048) pour un rendu de qualité.
+1. [NASA Visible Earth](https://visibleearth.nasa.gov/collection/1484/blue-marble)
+2. [Solar System Scope](https://www.solarsystemscope.com/textures/)
+3. [Solar Textures](https://www.solartextures.com/free-textures.html)
 
-## À propos du format TIF
-Le format TIF peut nécessiter une conversion pour être utilisé directement par Three.js. Si vous rencontrez des problèmes avec le chargement de la texture specular, vous pouvez essayer de convertir le fichier TIF en JPG ou PNG à l'aide d'un logiciel d'édition d'image comme GIMP ou Photoshop.
+Placez les fichiers téléchargés directement dans ce dossier.
+
+## Alternatives pour gérer les textures
+
+1. **Utiliser Git LFS** (Large File Storage):
+   ```bash
+   git lfs install
+   git lfs track "assets/textures/*.jpg" "assets/textures/*.png"
+   git add .gitattributes
+   ```
+
+2. **Mettre à jour le README** pour expliquer comment télécharger les textures
+
+## Comment changer la texture principale
+
+Pour utiliser une texture alternative comme texture principale:
+
+1. Ouvrez le fichier `src/components/Globe.js`
+2. Recherchez le bloc `createGlobe()` 
+3. Modifiez la ligne où la texture principale est chargée pour référencer votre texture préférée
