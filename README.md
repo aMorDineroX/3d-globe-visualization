@@ -82,3 +82,4 @@ Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
 - Optimiser les performances pour les appareils mobiles
 - Ajouter des animations de transition plus sophistiquées
 
+# 3d-globe-visualization
