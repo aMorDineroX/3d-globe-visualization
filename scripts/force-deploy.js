@@ -108,6 +108,11 @@ async function main() {
       process.exit(1);
     }
     
+    console.log("✅ Déploiement FORCÉ terminé avec succès!");
+    console.log("🌐 URL: https://amordinerox.github.io/3d-globe-visualization/");
+    console.log("\n⚠️ N'oubliez pas de revenir sur votre branche principale dès que possible.");
+    console.log("Pour ce faire, exécutez: npm run fix-branch");
+    
     // Nettoyage
     console.log("🧹 Nettoyage après déploiement...");
     fs.rmSync(deployDir, { recursive: true, force: true });

@@ -965,7 +965,7 @@ export class Globe {
     if (this.timeOfDay < 6 || this.timeOfDay > 18) {
       // Nuit
       this.dayNightMix = 1;
-    } else if (this.timeOfDay < 8 || cette.timeOfDay > 16) {
+    } else if (this.timeOfDay < 8 || this.timeOfDay > 16) {
       // Aube ou crépuscule
       if (this.timeOfDay < 8) {
         // Aube: 6h -> 8h (nuit->jour)
@@ -1083,7 +1083,7 @@ export class Globe {
       };
     };
     
-    if (this.globe && cette.globe.material && cette.globe.material.uniforms) {
+    if (this.globe && this.globe.material && this.globe.material.uniforms) {
       const uniforms = this.globe.material.uniforms;
       
       textureInfo.earth_daymap = getTextureDetails(uniforms.dayTexture.value, "earth_daymap");

@@ -12,7 +12,8 @@
     "deploy:manual": "node scripts/deploy.js",
     "deploy:force": "node scripts/force-deploy.js",
     "fix-branch": "node scripts/fix-branch.js",
-    "reset-repo": "node scripts/reset-repo.js"
+    "reset-repo": "node scripts/reset-repo.js",
+    "download-textures": "node scripts/download-textures.js"
   },
   "dependencies": {
     "d3-geo": "^3.1.0",
