@@ -6,14 +6,21 @@
   "scripts": {
     "dev": "node ./node_modules/vite/bin/vite.js",
     "build": "node ./node_modules/vite/bin/vite.js build",
-    "preview": "node ./node_modules/vite/bin/vite.js preview"
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist --no-history",
+    "deploy:manual": "node scripts/deploy.js",
+    "deploy:force": "node scripts/force-deploy.js",
+    "fix-branch": "node scripts/fix-branch.js",
+    "reset-repo": "node scripts/reset-repo.js"
   },
   "dependencies": {
-    "three": "^0.153.0",
+    "d3-geo": "^3.1.0",
     "gsap": "^3.12.0",
-    "d3-geo": "^3.1.0"
+    "three": "^0.153.0"
   },
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "vite": "^4.3.9"
   }
 }
