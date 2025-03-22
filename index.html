@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Globe Terrestre Interactif</title>
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌍</text></svg>">
+  <script type="module" crossorigin src="/assets/index-9a91de6a.js"></script>
+  <link rel="stylesheet" href="/assets/index-9f3bf1b0.css">
+</head>
+<body>
+  <div id="info">
+    <h1>Globe Terrestre Interactif</h1>
+    <p>Faites glisser pour pivoter • Molette pour zoomer • Cliquez sur un marqueur pour plus d'infos</p>
+  </div>
+  
+  <div id="controls">
+    <label>
+      <input type="checkbox" id="show-sun" checked> Soleil
+    </label>
+    <label>
+      <input type="checkbox" id="show-moon" checked> Lune
+    </label>
+    <label>
+      <input type="checkbox" id="show-stars" checked> Étoiles
+    </label>
+  </div>
+  
+  <div id="globe-container"></div>
+  <div id="loading">Chargement...</div>
+  
+  
+</body>
+</html>
